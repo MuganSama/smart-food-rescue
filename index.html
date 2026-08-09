@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Food Rescue - Multi-Role React & Tailwind CSS Platform</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM 18 CDN -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
+  <!-- React Router v6.3.0 CDN (Stable UMD Build) -->
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/history@5.3.0/umd/history.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-router@6.3.0/umd/react-router.production.min.js"></script>
+  <script crossorigin
+    src="https://cdn.jsdelivr.net/npm/react-router-dom@6.3.0/umd/react-router-dom.production.min.js"></script>
+  <!-- Babel Standalone JSX compiler -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-50 text-slate-800 antialiased font-sans">
+
+  <div id="root"></div>
+
+  <!-- Client App Bootstrapper -->
+  <script type="text/babel">
+    const { HashRouter, Routes, Route, Link, useNavigate, useLocation, Navigate } = ReactRouterDOM;
+    const { useState, useEffect, useContext, createContext } = React;
+
+    // --- 1. DATA LAYER & MOCK STORAGE (src/supabase.js) ---
+    const STORAGE_KEYS = {
+      DONATIONS: 'sfr_react_donations',
+      CITIZEN_REPORTS: 'sfr_react_reports',
+      SESSION: 'sfr_react_session'
+    };
+
+    function seedInitialStorage() {
+      if (!localStorage.getItem(STORAGE_KEYS.DONATIONS)) {
+        const initialDonations = [
+          {
+            id: "don-101",
+            donor_id: "usr-donor-1",
+            donor_name: "Green Olive Bistro",
+            title: "Gourmet Pasta & Organic Caesar Salads",
+            category: "Prepared Meals",
+            quantity: "60 meals",
+            quantity_num: 60,
+            expiry_time: new Date(Date.now() + 3 * 3600 * 1000).toISOString(),
+            address: "128 Olive Garden Way, Midtown",
+            storage_requirements: "Refrigerated",
+            dietary_tags: ["Vegetarian", "Nut-Free"],
+            status: "available",
+            claimed_by_id: null,
+            claimed_by_name: null,
+            pickup_pin: null,
+            notes: "Individually portioned containers packed hot.",
+            created_at: new Date(Date.now() - 3600 * 1000).toISOString()
+          },
+          {
+            id: "don-102",
+            donor_id: "usr-donor-2",
+            donor_name: "Artisan Bakery Co.",
+            title: "Fresh Baked Sourdough & Croissants",
+            category: "Bakery",
+            quantity: "45 items",
+            quantity_num: 45,
+            expiry_time: new Date(Date.now() + 5 * 3600 * 1000).toISOString(),
+            address: "742 Evergreen Terrace, Downtown",
+            storage_requirements: "Room Temp",
+            dietary_tags: ["Vegetarian"],
+            status: "available",
+            claimed_by_id: null,
+            claimed_by_name: null,
+            pickup_pin: null,
+            notes: "Freshly baked morning batch.",
+            created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+          }
+        ];
+        localStorage.setItem(STORAGE_KEYS.DONATIONS, JSON.stringify(initialDonations));
+      }
+
+      if (!localStorage.getItem(STORAGE_KEYS.CITIZEN_REPORTS)) {
+        const initialReports = [
+          {
+            id: "rep-201",
+            reporter_id: "usr-citizen-1",
+            reporter_name: "Sarah Jenkins (Citizen Spotter)",
+            location: "4th Street & Main Avenue Transit Plaza",
+            est_people: 45,
+            urgency: "High",
+            category: "Street Community",
+            description: "Group of unhoused community members gathered near the north pavilion needing dinner meal boxes.",
+            status: "pending",
+            serviced_by: null,
+            created_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
+          },
+          {
+            id: "rep-202",
+            reporter_id: "usr-citizen-2",
+            reporter_name: "David Kim (Community Volunteer)",
+            location: "Pier 12 Temporary Camp",
+            est_people: 30,
+            urgency: "Emergency",
+            category: "Temporary Shelter",
+            description: "Displaced family group needing bottled water and warm packaged soups.",
+            status: "pending",
+            serviced_by: null,
+            created_at: new Date(Date.now() - 6 * 3600 * 1000).toISOString()
+          }
+        ];
+        localStorage.setItem(STORAGE_KEYS.CITIZEN_REPORTS, JSON.stringify(initialReports));
+      }
+    }
+
+    seedInitialStorage();
+
+    const dbClient = {
+      async getDonations() {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.DONATIONS)) || [];
+      },
+      async createDonation(donationData) {
+        const list = await this.getDonations();
+        const newRecord = {
+          id: `don-${Math.floor(1000 + Math.random() * 9000)}`,
+          status: 'available',
+          created_at: new Date().toISOString(),
+          ...donationData
+        };
+        list.unshift(newRecord);
+        localStorage.setItem(STORAGE_KEYS.DONATIONS, JSON.stringify(list));
+        return newRecord;
+      },
+      async claimDonation(donationId, ngoProfile) {
+        const list = await this.getDonations();
+        const item = list.find(d => d.id === donationId);
+        if (item) {
+          item.status = 'claimed';
+          item.claimed_by_id = ngoProfile.id;
+          item.claimed_by_name = ngoProfile.organization_name || ngoProfile.full_name;
+          item.pickup_pin = Math.floor(1000 + Math.random() * 9000).toString();
+          localStorage.setItem(STORAGE_KEYS.DONATIONS, JSON.stringify(list));
+        }
+        return item;
+      },
+      async getCitizenReports() {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.CITIZEN_REPORTS)) || [];
+      },
+      async createCitizenReport(reportData) {
+        const list = await this.getCitizenReports();
+        const newRecord = {
+          id: `rep-${Math.floor(1000 + Math.random() * 9000)}`,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          ...reportData
+        };
+        list.unshift(newRecord);
+        localStorage.setItem(STORAGE_KEYS.CITIZEN_REPORTS, JSON.stringify(list));
+        return newRecord;
+      },
+      async dispatchReport(reportId, ngoName) {
+        const list = await this.getCitizenReports();
+        const item = list.find(r => r.id === reportId);
+        if (item) {
+          item.status = 'dispatched';
+          item.serviced_by = ngoName;
+          localStorage.setItem(STORAGE_KEYS.CITIZEN_REPORTS, JSON.stringify(list));
+        }
+        return item;
+      }
+    };
+
+    // --- 2. AUTHENTICATION CONTEXT (src/context/AuthContext.jsx) ---
+    /**
+     * FIRST-PRINCIPLES REASONING: Authentication Context
+     * 1. WHY CONTEXT? Ensures single source of truth for user session & RLS role across the React tree.
+     * 2. WHY DEMO PROFILES? Allows instant interactive validation of OAuth & Role-based routes.
+     */
+    const AuthContext = createContext(null);
+
+    const PRESET_DEMO_PROFILES = {
+      donor: {
+        id: "usr-donor-101",
+        email: "elena@greenolivebistro.com",
+        full_name: "Elena Vance",
+        organization_name: "Green Olive Bistro",
+        role: "donor",
+        avatar_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80",
+        phone: "+1 (555) 345-6789"
+      },
+      ngo: {
+        id: "usr-ngo-102",
+        email: "marcus@hopekitchen.org",
+        full_name: "Marcus Brody",
+        organization_name: "Hope Community Kitchen",
+        role: "ngo",
+        avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+        phone: "+1 (555) 901-2345"
+      },
+      citizen: {
+        id: "usr-citizen-103",
+        email: "sarah.j@citizennet.org",
+        full_name: "Sarah Jenkins",
+        organization_name: "Citizen Need Spotter",
+        role: "citizen",
+        avatar_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
+        phone: "+1 (555) 123-9876"
+      }
+    };
+
+    const AuthProvider = ({ children }) => {
+      const [user, setUser] = useState(() => {
+        const saved = localStorage.getItem('sfr_auth_session');
+        return saved ? JSON.parse(saved) : null;
+      });
+
+      const [loading, setLoading] = useState(false);
+
+      useEffect(() => {
+        if (user) {
+          localStorage.setItem('sfr_auth_session', JSON.stringify(user));
+        } else {
+          localStorage.removeItem('sfr_auth_session');
+        }
+      }, [user]);
+
+      const loginWithGoogle = async (targetRole) => {
+        setLoading(true);
+        sessionStorage.setItem('sfr_oauth_target_role', targetRole);
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const demoTemplate = PRESET_DEMO_PROFILES[targetRole] || PRESET_DEMO_PROFILES.donor;
+        const authenticatedUser = {
+          ...demoTemplate,
+          role: targetRole,
+          lastLogin: new Date().toISOString()
+        };
+
+        setUser(authenticatedUser);
+        setLoading(false);
+        return authenticatedUser;
+      };
+
+      const logout = () => {
+        setUser(null);
+        localStorage.removeItem('sfr_auth_session');
+        sessionStorage.removeItem('sfr_oauth_target_role');
+      };
+
+      return (
+        <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
+          {children}
+        </AuthContext.Provider>
+      );
+    };
+
+    const useAuth = () => useContext(AuthContext);
+
+    // --- 3. PROTECTED ROUTE GUARD (src/components/ProtectedRoute.jsx) ---
+    /**
+     * FIRST-PRINCIPLES REASONING: Protected Route Guard
+     * Checks 2 levels:
+     * Level 1 (Auth check): Redirect unauthenticated users to role login route.
+     * Level 2 (Role check): Redirect authorized users to their correct dashboard if attempting wrong route.
+     */
+    const ProtectedRoute = ({ children, allowedRole }) => {
+      const { user, loading } = useAuth();
+
+      if (loading) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-600 border-t-transparent"></div>
+          </div>
+        );
+      }
+
+      if (!user) {
+        const loginRedirects = {
+          donor: '/login-donor',
+          ngo: '/login-ngo',
+          citizen: '/login-citizen'
+        };
+        return <Navigate to={loginRedirects[allowedRole] || '/login-donor'} replace />;
+      }
+
+      if (user.role !== allowedRole) {
+        const roleDashboards = {
+          donor: '/donor',
+          ngo: '/ngo',
+          citizen: '/citizen'
+        };
+        return <Navigate to={roleDashboards[user.role] || '/'} replace />;
+      }
+
+      return children;
+    };
+
+    // --- 4. UNIVERSAL NAVBAR (src/components/Navbar.jsx) ---
+    const Navbar = () => {
+      const { user, logout } = useAuth();
+      const navigate = useNavigate();
+      const location = useLocation();
+
+      const handleLogout = () => {
+        logout();
+        navigate('/');
+      };
+
+      return (
+        <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-emerald-100 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-3 font-extrabold text-xl text-slate-900 group">
+              <div className="w-11 h-11 bg-gradient-to-tr from-emerald-600 to-teal-500 text-white rounded-xl flex items-center justify-center shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+                🌱
+              </div>
+              <span>Smart<span className="text-emerald-600">Food</span>Rescue</span>
+            </Link>
+
+            <div className="hidden md:flex items-center gap-2">
+              <Link
+                to="/"
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${location.pathname === '/' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:text-emerald-600 hover:bg-slate-50'}`}
+              >
+                🌍 Global Impact
+              </Link>
+
+              {user && (
+                <Link
+                  to={`/${user.role}`}
+                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors capitalize"
+                >
+                  📊 {user.role} Dashboard
+                </Link>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              {user ? (
+                <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 p-1.5 pr-3 rounded-full">
+                  <img
+                    src={user.avatar_url}
+                    alt={user.full_name}
+                    className="w-9 h-9 rounded-full object-cover border-2 border-emerald-500"
+                  />
+                  <div className="hidden sm:flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-800 leading-tight">{user.full_name}</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">{user.role}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="ml-2 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-full font-bold text-xs transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link to="/login-donor" className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg">Donor Login</Link>
+                  <Link to="/login-ngo" className="px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg">NGO Login</Link>
+                  <Link to="/login-citizen" className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm">Spotter Login</Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </nav>
+      );
+    };
+
+    // --- 5. GLOBAL IMPACT PAGE (src/pages/GlobalImpactPage.jsx) ---
+    const GlobalImpactPage = () => {
+      const impactStats = [
+        { label: "Total Meals Rescued", value: "14,850+", icon: "🍲", desc: "Nutritious meals saved from landfills" },
+        { label: "Active Receiving NGOs", value: "48 Shelters", icon: "🏢", desc: "Verified community food distribution centers" },
+        { label: "Pending Citizen Alerts", value: "12 Locations", icon: "📍", desc: "Reported hunger spots needing immediate dispatch" },
+        { label: "CO2 Emissions Prevented", value: "18,560 kg", icon: "🌱", desc: "Environmental greenhouse gas offset" }
+      ];
+
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
+          <div className="relative overflow-hidden bg-gradient-to-b from-emerald-900 via-emerald-800 to-slate-900 text-white py-20 px-4 text-center">
+            <div className="relative max-w-4xl mx-auto space-y-6">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                🛡️ Multi-Role Community Food Rescue Platform
+              </div>
+              <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight">
+                Zero Food Waste. <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">Zero Local Hunger.</span>
+              </h1>
+              <p className="text-slate-300 text-lg max-w-2xl mx-auto">
+                Connecting restaurants with surplus meals, shelters needing food, and citizen spotters reporting where communities need urgent hunger relief.
+              </p>
+
+              <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                <Link to="/login-donor" className="p-5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-left transition-all">
+                  <div className="text-3xl mb-1">🏨</div>
+                  <div className="font-bold text-white text-base">I am a Donor</div>
+                  <div className="text-xs text-slate-300 mt-1">Restaurants & bakeries with surplus food.</div>
+                </Link>
+                <Link to="/login-ngo" className="p-5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-left transition-all">
+                  <div className="text-3xl mb-1">🏢</div>
+                  <div className="font-bold text-white text-base">I am an NGO</div>
+                  <div className="text-xs text-slate-300 mt-1">Shelters & food banks looking to claim food.</div>
+                </Link>
+                <Link to="/login-citizen" className="p-5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-left transition-all">
+                  <div className="text-3xl mb-1">📍</div>
+                  <div className="font-bold text-white text-base">I am a Spotter</div>
+                  <div className="text-xs text-slate-300 mt-1">Report locations where people need food.</div>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 -mt-10 relative z-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {impactStats.map((stat, idx) => (
+                <div key={idx} className="bg-white rounded-2xl p-6 shadow-xl border border-slate-100 flex flex-col justify-between">
+                  <div>
+                    <div className="text-3xl mb-2">{stat.icon}</div>
+                    <div className="text-3xl font-extrabold text-slate-900">{stat.value}</div>
+                    <div className="text-sm font-bold text-slate-700 mt-1">{stat.label}</div>
+                  </div>
+                  <div className="text-xs text-slate-500 mt-4 pt-3 border-t border-slate-100">{stat.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 6. ROLE LOGIN PAGE (src/pages/LoginPage.jsx) ---
+    const LoginPage = ({ targetRole }) => {
+      const { loginWithGoogle, loading } = useAuth();
+      const navigate = useNavigate();
+
+      const roleMeta = {
+        donor: { title: "Restaurant & Food Donor Portal", badge: "🏨 Food Donor Entry Point", color: "from-emerald-600 to-teal-700", redirectPath: "/donor" },
+        ngo: { title: "NGO & Shelter Partner Portal", badge: "🏢 NGO Representative Entry Point", color: "from-teal-600 to-emerald-800", redirectPath: "/ngo" },
+        citizen: { title: "Community Need Spotter Portal", badge: "📍 Citizen Spotter Entry Point", color: "from-amber-600 to-orange-700", redirectPath: "/citizen" }
+      };
+
+      const meta = roleMeta[targetRole] || roleMeta.donor;
+
+      const handleGoogleLogin = async () => {
+        await loginWithGoogle(targetRole);
+        navigate(meta.redirectPath, { replace: true });
+      };
+
+      return (
+        <div className="min-h-[85vh] flex items-center justify-center bg-slate-50 px-4 py-12">
+          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+            <div className={`p-8 bg-gradient-to-r ${meta.color} text-white text-center space-y-2`}>
+              <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-extrabold uppercase">{meta.badge}</div>
+              <h2 className="text-2xl font-extrabold">{meta.title}</h2>
+            </div>
+            <div className="p-8 space-y-6 text-center">
+              <p className="text-sm text-slate-600">Sign in with your Google account to access your role-protected dashboard.</p>
+              <button
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full py-4 px-6 bg-white hover:bg-slate-50 text-slate-700 font-bold border-2 border-slate-200 hover:border-emerald-500 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-3"
+              >
+                {loading ? "Authenticating..." : "Continue with Google Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 7. DONOR DASHBOARD (src/pages/DonorDashboard.jsx) ---
+    const DonorDashboard = () => {
+      const { user } = useAuth();
+      const [donations, setDonations] = useState([]);
+      const [title, setTitle] = useState('');
+      const [quantity, setQuantity] = useState('40 meals');
+      const [expiryHours, setExpiryHours] = useState('4');
+      const [address, setAddress] = useState('128 Olive Garden Way, Midtown');
+
+      useEffect(() => {
+        dbClient.getDonations().then(setDonations);
+      }, []);
+
+      const handlePost = async (e) => {
+        e.preventDefault();
+        await dbClient.createDonation({
+          donor_id: user.id,
+          donor_name: user.organization_name || user.full_name,
+          title,
+          category: "Prepared Meals",
+          quantity,
+          quantity_num: parseInt(quantity) || 20,
+          expiry_time: new Date(Date.now() + parseFloat(expiryHours) * 3600 * 1000).toISOString(),
+          address
+        });
+        setTitle('');
+        dbClient.getDonations().then(setDonations);
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 py-10 px-4 max-w-7xl mx-auto space-y-8">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+            <h1 className="text-3xl font-extrabold text-slate-900">Donor Portal - Welcome, {user?.full_name}</h1>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md">
+            <h2 className="text-xl font-bold text-slate-900 mb-4">Post Surplus Food</h2>
+            <form onSubmit={handlePost} className="space-y-4">
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Food Item Title (e.g. 40 Trays Pasta)" className="w-full p-3.5 bg-slate-50 border rounded-xl" required />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <input type="text" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="Quantity (e.g. 50 meals)" className="p-3.5 bg-slate-50 border rounded-xl" required />
+                <select value={expiryHours} onChange={e => setExpiryHours(e.target.value)} className="p-3.5 bg-slate-50 border rounded-xl">
+                  <option value="2">Expiring in 2 Hours</option>
+                  <option value="4">Expiring in 4 Hours</option>
+                  <option value="8">Expiring in 8 Hours</option>
+                </select>
+                <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder="Pickup Address" className="p-3.5 bg-slate-50 border rounded-xl" required />
+              </div>
+              <button type="submit" className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl">Publish Donation</button>
+            </form>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-900">My Past & Active Food Listings</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {donations.map(item => (
+                <div key={item.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-emerald-600">{item.category}</span>
+                    <span className="text-xs font-extrabold px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full">{item.status}</span>
+                  </div>
+                  <h3 className="font-bold text-slate-900">{item.title}</h3>
+                  <div className="text-xs text-slate-600">Qty: {item.quantity} | {item.address}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 8. NGO DASHBOARD (src/pages/NgoDashboard.jsx) ---
+    const NgoDashboard = () => {
+      const { user } = useAuth();
+      const [donations, setDonations] = useState([]);
+      const [citizenReports, setCitizenReports] = useState([]);
+
+      useEffect(() => {
+        dbClient.getDonations().then(setDonations);
+        dbClient.getCitizenReports().then(setCitizenReports);
+      }, []);
+
+      const handleClaim = async (id) => {
+        await dbClient.claimDonation(id, user);
+        dbClient.getDonations().then(setDonations);
+      };
+
+      const handleDispatch = async (id) => {
+        await dbClient.dispatchReport(id, user.organization_name || user.full_name);
+        dbClient.getCitizenReports().then(setCitizenReports);
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 py-10 px-4 max-w-7xl mx-auto space-y-10">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+            <h1 className="text-3xl font-extrabold text-slate-900">NGO Feed - Welcome, {user?.full_name}</h1>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-2xl font-extrabold text-slate-900">Available Surplus Food Feed</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {donations.map(item => (
+                <div key={item.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-3">
+                  <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
+                  <div className="text-xs text-slate-600">Donor: {item.donor_name} | Qty: {item.quantity}</div>
+                  {item.status === 'available' ? (
+                    <button onClick={() => handleClaim(item.id)} className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl">
+                      Claim Food Donation
+                    </button>
+                  ) : (
+                    <div className="text-xs text-center font-bold text-slate-500">Claimed by {item.claimed_by_name}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-6 border-t border-slate-200">
+            <h2 className="text-2xl font-extrabold text-slate-900">Citizen Spotter Hunger Reports</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {citizenReports.map(report => (
+                <div key={report.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-2">
+                  <h3 className="font-extrabold text-slate-900">{report.location}</h3>
+                  <div className="text-xs text-slate-600">Est. People: ~{report.est_people} | Urgency: {report.urgency}</div>
+                  <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl">{report.description}</p>
+                  {report.status === 'pending' ? (
+                    <button onClick={() => handleDispatch(report.id)} className="w-full py-2 bg-amber-500 text-white font-bold text-xs rounded-xl">
+                      Dispatch Rescue Team
+                    </button>
+                  ) : (
+                    <div className="text-xs text-emerald-700 font-bold">Dispatched by {report.serviced_by}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 9. CITIZEN DASHBOARD (src/pages/CitizenDashboard.jsx) ---
+    const CitizenDashboard = () => {
+      const { user } = useAuth();
+      const [reports, setReports] = useState([]);
+      const [location, setLocation] = useState('');
+      const [estPeople, setEstPeople] = useState('35');
+      const [urgency, setUrgency] = useState('High');
+      const [description, setDescription] = useState('');
+
+      useEffect(() => {
+        dbClient.getCitizenReports().then(setReports);
+      }, []);
+
+      const handleReport = async (e) => {
+        e.preventDefault();
+        await dbClient.createCitizenReport({
+          reporter_id: user.id,
+          reporter_name: user.full_name,
+          location,
+          est_people: parseInt(estPeople) || 10,
+          urgency,
+          description
+        });
+        setLocation('');
+        setDescription('');
+        dbClient.getCitizenReports().then(setReports);
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 py-10 px-4 max-w-7xl mx-auto space-y-8">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm border-l-8 border-amber-500">
+            <h1 className="text-3xl font-extrabold text-slate-900">Citizen Spotter - Welcome, {user?.full_name}</h1>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md">
+            <h2 className="text-xl font-bold text-slate-900 mb-4">Report Hunger Location</h2>
+            <form onSubmit={handleReport} className="space-y-4">
+              <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="Location / Address" className="w-full p-3.5 bg-slate-50 border rounded-xl" required />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input type="number" value={estPeople} onChange={e => setEstPeople(e.target.value)} placeholder="Est People" className="p-3.5 bg-slate-50 border rounded-xl" required />
+                <select value={urgency} onChange={e => setUrgency(e.target.value)} className="p-3.5 bg-slate-50 border rounded-xl">
+                  <option value="Emergency">Emergency</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                </select>
+              </div>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description & Notes" className="w-full p-3.5 bg-slate-50 border rounded-xl" rows="2" />
+              <button type="submit" className="px-6 py-3 bg-amber-500 text-white font-bold rounded-xl">Submit Hunger Alert</button>
+            </form>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-900">My Submitted Spotter Alerts</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {reports.map(rep => (
+                <div key={rep.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs font-bold text-amber-600">{rep.urgency} Urgency</span>
+                    <span className="text-xs font-bold capitalize">{rep.status}</span>
+                  </div>
+                  <h3 className="font-bold text-slate-900">{rep.location}</h3>
+                  <div className="text-xs text-slate-600">Est. People: ~{rep.est_people}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 10. MAIN APP ASSEMBLY ---
+    const App = () => {
+      return (
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
+            <Navbar />
+            <main className="flex-grow">
+              <Routes>
+                <Route path="/" element={<GlobalImpactPage />} />
+                <Route path="/login-donor" element={<LoginPage targetRole="donor" />} />
+                <Route path="/login-ngo" element={<LoginPage targetRole="ngo" />} />
+                <Route path="/login-citizen" element={<LoginPage targetRole="citizen" />} />
+                <Route path="/donor" element={<ProtectedRoute allowedRole="donor"><DonorDashboard /></ProtectedRoute>} />
+                <Route path="/ngo" element={<ProtectedRoute allowedRole="ngo"><NgoDashboard /></ProtectedRoute>} />
+                <Route path="/citizen" element={<ProtectedRoute allowedRole="citizen"><CitizenDashboard /></ProtectedRoute>} />
+              </Routes>
+            </main>
+          </div>
+        </AuthProvider>
+      );
+    };
+
+    // Render React App into DOM
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <HashRouter>
+        <App />
+      </HashRouter>
+    );
+  </script>
+</body>
+
+</html>

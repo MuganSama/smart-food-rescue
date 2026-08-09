@@ -1,0 +1,12 @@
+{
+  "name": "smart-food-share",
+  "version": "1.0.0",
+  "description": "Smart Food Rescue Multi-Role React Platform",
+  "main": "index.html",
+  "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File ./server.ps1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
