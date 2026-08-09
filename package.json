@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "description": "Smart Food Rescue Multi-Role React Platform",
   "main": "index.html",
+  "homepage": "https://mugansama.github.io/smart-food-rescue",
   "scripts": {
-    "start": "powershell -ExecutionPolicy Bypass -File ./server.ps1"
+    "start": "powershell -ExecutionPolicy Bypass -File ./server.ps1",
+    "deploy": "git push origin gh-pages"
   },
   "keywords": [],
   "author": "",
